@@ -4,7 +4,11 @@ import (
 	"fmt"
 )
 
+// Tag is a TIFF tag. It's a 16-bit unsigned integer representing
+// some specific data.
 type Tag uint16
+
+var _ fmt.Stringer = Tag(0)
 
 const (
 	// Tags related to image data structure.
@@ -49,6 +53,7 @@ const (
 	GPSInfoIFDPointer Tag = 0x8825
 )
 
+// String returns a string representation of the tag.
 func (t Tag) String() string {
 	m := map[Tag]string{
 		ImageWidth:                "ImageWidth",

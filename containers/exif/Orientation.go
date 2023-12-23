@@ -1,9 +1,13 @@
 package exif
 
 import (
+	"fmt"
+
 	"github.com/abrander/apexif/containers/tiff"
 )
 
+// Orientation is a type representing the orientation of the camera
+// when the image was taken.
 type Orientation uint16
 
 const (
@@ -17,6 +21,9 @@ const (
 	Rotate270                 Orientation = 8
 )
 
+var _ fmt.Stringer = Orientation(Horizontal)
+
+// String returns a string representation of the orientation.
 func (o Orientation) String() string {
 	switch o {
 	case Horizontal:
@@ -40,6 +47,8 @@ func (o Orientation) String() string {
 	}
 }
 
+// Orientation returns the orientation of the camera when the image
+// was taken or an error.
 func (e *Exif) Orientation() (Orientation, error) {
 	entry, err := e.Tiff.Entry(0, tiff.Orientation)
 	if err != nil {

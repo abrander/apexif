@@ -1,5 +1,10 @@
 package tiff
 
+import (
+	"fmt"
+)
+
+// Type is a type representing the type of an IFD entry.
 type Type uint16
 
 const (
@@ -13,6 +18,9 @@ const (
 	SRational Type = 10
 )
 
+var _ fmt.Stringer = Type(0)
+
+// String returns a string representation of the type.
 func (t Type) String() string {
 	switch t {
 	case Byte:

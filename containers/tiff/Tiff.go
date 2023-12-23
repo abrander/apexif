@@ -5,6 +5,7 @@ import (
 	"errors"
 )
 
+// Tiff is a type representing a TIFF file.
 type Tiff struct {
 	bytes []byte
 
@@ -13,13 +14,17 @@ type Tiff struct {
 }
 
 var (
+	// ErrNotTiff is returned if the data is not a TIFF file.
 	ErrNotTiff = errors.New("not a TIFF file")
 
+	// ErrTagNotFound is returned if the tag is not found.
 	ErrTagNotFound = errors.New("tag not found")
 
+	// ErrIFDNotFound is returned if the IFD is not found.
 	ErrIFDNotFound = errors.New("IFD not found")
 )
 
+// Parse parses the given data as a TIFF file or returns an error.
 func Parse(data []byte) (*Tiff, error) {
 	if len(data) < 8 {
 		return nil, ErrNotTiff
@@ -76,12 +81,17 @@ func Parse(data []byte) (*Tiff, error) {
 	return t, nil
 }
 
+// IFDs returns the IFDs in the TIFF file.
 func (t *Tiff) IFDs() []IFD {
 	return t.ifds
 }
 
+// AnyIFD is a special value that can be passed to Entry to search
+// all IFDs for a tag.
 const AnyIFD = -1
 
+// Entry returns the entry for the given tag in the given IFD. AnyIFD
+// can be passed to search all IFDs for the tag.
 func (t *Tiff) Entry(ifd int, tag Tag) (Entry, error) {
 	var zero Entry
 
@@ -103,6 +113,7 @@ func (t *Tiff) Entry(ifd int, tag Tag) (Entry, error) {
 	return t.ifds[ifd].Entry(tag)
 }
 
+// ReadIFD reads the IFD at the given offset.
 func (t *Tiff) ReadIFD(offset int) (IFD, error) {
 	buf := t.bytes[offset:]
 
@@ -136,6 +147,9 @@ func (t *Tiff) ReadIFD(offset int) (IFD, error) {
 	return ifds, nil
 }
 
+// Ascii returns the ASCII value of a tag. AnyIFD can be passed to
+// search all IFDs for the tag. If the tag is not found, ErrTagNotFound
+// is returned.
 func (t *Tiff) Ascii(ifd int, tag Tag) (string, error) {
 	e, err := t.Entry(ifd, tag)
 	if err != nil {

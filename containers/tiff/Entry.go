@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// Entry is a type representing an IFD entry.
 type Entry struct {
 	Tag         Tag
 	Type        Type
@@ -17,6 +18,7 @@ type Entry struct {
 
 var _ fmt.Stringer = &Entry{}
 
+// String returns a string representation of the entry.
 func (e Entry) String() string {
 	var str string
 	var err error
@@ -93,6 +95,7 @@ func (e Entry) String() string {
 	return fmt.Sprintf("0x%04x ", int(e.Tag)) + str
 }
 
+// Value returns the value of the entry. This *can* panic!
 func (e Entry) Value() (any, error) {
 	switch e.Type {
 	case Ascii:
@@ -122,10 +125,12 @@ func (e Entry) Value() (any, error) {
 	}
 }
 
+// Offset returns the offset of the entry.
 func (e Entry) Offset() int {
 	return int(e.tiff.endianness.Uint32(e.ValueOffset[:]))
 }
 
+// Ascii returns the ASCII value of the entry.
 func (e *Entry) Ascii() (string, error) {
 	clean := func(str string) string {
 		str = strings.TrimSuffix(str, "\x00")
@@ -152,6 +157,7 @@ func (e *Entry) Ascii() (string, error) {
 	return clean(str), nil
 }
 
+// Short returns the unsigned short value of the entry.
 func (e *Entry) Short() (uint16, error) {
 	if e.Type != Short {
 		return 0, errors.New("not a short")
@@ -164,6 +170,7 @@ func (e *Entry) Short() (uint16, error) {
 	return e.tiff.endianness.Uint16(e.ValueOffset[:]), nil
 }
 
+// ShortSlice returns the unsigned short slice value of the entry.
 func (e *Entry) ShortSlice() ([]uint16, error) {
 	if e.Type != Short {
 		return nil, errors.New("not a short")
@@ -193,6 +200,7 @@ func (e *Entry) ShortSlice() ([]uint16, error) {
 	return shorts, nil
 }
 
+// Long returns the unsigned long (32 bit) value of the entry.
 func (e *Entry) Long() (uint32, error) {
 	if e.Type != Long {
 		return 0, errors.New("not a long")
@@ -209,6 +217,7 @@ func (e *Entry) Long() (uint32, error) {
 	return e.tiff.endianness.Uint32(e.ValueOffset[:]), nil
 }
 
+// LongSlice returns the unsigned long slice value of the entry.
 func (e *Entry) LongSlice() ([]uint32, error) {
 	if e.Type != Long {
 		return nil, errors.New("not a long")
@@ -238,6 +247,7 @@ func (e *Entry) LongSlice() ([]uint32, error) {
 	return longs, nil
 }
 
+// Rational returns the unsigned rational value of the entry.
 func (e *Entry) Rational() (UnsignedRational, error) {
 	if e.Type != Rational {
 		return UnsignedRational{}, errors.New("not a rational")
@@ -257,6 +267,7 @@ func (e *Entry) Rational() (UnsignedRational, error) {
 	}, nil
 }
 
+// RationalSlice returns the unsigned rational slice value of the entry.
 func (e *Entry) RationalSlice() ([]UnsignedRational, error) {
 	if e.Type != Rational {
 		return nil, errors.New("not a rational")
@@ -292,6 +303,7 @@ func (e *Entry) RationalSlice() ([]UnsignedRational, error) {
 	return ratios, nil
 }
 
+// SRational returns the signed rational value of the entry.
 func (e *Entry) SRational() (SignedRational, error) {
 	if e.Type != SRational {
 		return SignedRational{}, errors.New("not a rational")
@@ -311,6 +323,7 @@ func (e *Entry) SRational() (SignedRational, error) {
 	}, nil
 }
 
+// SRationalSlice returns the signed rational slice value of the entry.
 func (e *Entry) SRationalSlice() ([]SignedRational, error) {
 	if e.Type != SRational {
 		return nil, errors.New("not a rational")

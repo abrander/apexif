@@ -12,6 +12,10 @@ import (
 	"github.com/abrander/apexif/fileformats/webp"
 )
 
+// Identify tries to identify the file format of the given data.
+// If the file format is recognized, a FileType is returned.
+// If the file format is not recognized, ErrImageNotRecognized
+// is returned.
 func Identify(data []byte) (fileformats.FileType, error) {
 	try := []fileformats.Identifier{
 		jpeg.Identify,

@@ -1,9 +1,12 @@
 package exif
 
 import (
+	"fmt"
+
 	"github.com/abrander/apexif/containers/tiff"
 )
 
+// Tag is a type representing an EXIF tag.
 type Tag tiff.Tag
 
 const (
@@ -140,6 +143,9 @@ const (
 	InteroperabilityIFDPointer Tag = 0xa005
 )
 
+var _ fmt.Stringer = Tag(ExifVersion)
+
+// String returns a string representation of the tag.
 func (t Tag) String() string {
 	m := map[Tag]string{
 		ExifVersion:     "ExifVersion",
