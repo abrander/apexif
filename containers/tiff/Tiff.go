@@ -56,6 +56,11 @@ func Parse(data []byte) (*Tiff, error) {
 	// Get the offset to the first IFD
 	ifdOffset := int(endianness.Uint32(data[4:]))
 
+	// Check ifdOffset
+	if ifdOffset < 8 || ifdOffset >= len(data)-2 {
+		return nil, errors.New("IFD offset out of bounds")
+	}
+
 	// Read the IFDs
 	t.ifds = []IFD{}
 	for {
@@ -63,7 +68,16 @@ func Parse(data []byte) (*Tiff, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		ifdCount := int(endianness.Uint16(data[ifdOffset:]))
+		if ifdCount < 1 {
+			break
+		}
+
+		// Validate ifdCount
+		if len(data) < ifdOffset+2+ifdCount*12+4 {
+			return nil, errors.New("IFD count mismatch")
+		}
 
 		t.ifds = append(t.ifds, ifd)
 
@@ -72,10 +86,14 @@ func Parse(data []byte) (*Tiff, error) {
 			return nil, errors.New("Buffer too small")
 		}
 
-		ifdOffset = int(endianness.Uint32(data[ifdOffset+2+ifdCount*12:]))
-		if ifdOffset == 0 {
+		nextIfdOffset := int(endianness.Uint32(data[ifdOffset+2+ifdCount*12:]))
+
+		// Chec if next IFD offset seems legit.
+		if nextIfdOffset < ifdOffset+2+ifdCount*12+4 {
 			break
 		}
+
+		ifdOffset = nextIfdOffset
 	}
 
 	return t, nil
@@ -115,6 +133,10 @@ func (t *Tiff) Entry(ifd int, tag Tag) (Entry, error) {
 
 // ReadIFD reads the IFD at the given offset.
 func (t *Tiff) ReadIFD(offset int) (IFD, error) {
+	if offset < 0 || offset >= len(t.bytes) {
+		return nil, errors.New("offset out of bounds")
+	}
+
 	buf := t.bytes[offset:]
 
 	if len(buf) < 2 {
@@ -125,6 +147,11 @@ func (t *Tiff) ReadIFD(offset int) (IFD, error) {
 	ifdCount := t.endianness.Uint16(buf[0:2])
 
 	if len(t.bytes) < int(ifdCount)*12+2 {
+		return nil, errors.New("buffer too small")
+	}
+
+	// Check if IFD count would take more space than the buffer
+	if len(buf) < int(ifdCount)*12+2 {
 		return nil, errors.New("buffer too small")
 	}
 
