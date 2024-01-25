@@ -95,9 +95,18 @@ func (e Entry) String() string {
 	return fmt.Sprintf("0x%04x ", int(e.Tag)) + str
 }
 
-// Value returns the value of the entry. This *can* panic!
+// Value returns the value of the entry as an appropriate Go
+// type. If the entry is not easily converted to a Go type,
+// an error is returned.
 func (e Entry) Value() (any, error) {
 	switch e.Type {
+	case Byte:
+		if e.Count == 1 {
+			return e.Byte()
+		}
+
+		return e.ByteSlice()
+
 	case Ascii:
 		return e.Ascii()
 
@@ -105,12 +114,14 @@ func (e Entry) Value() (any, error) {
 		if e.Count == 1 {
 			return e.Short()
 		}
+
 		return e.ShortSlice()
 
 	case Long:
 		if e.Count == 1 {
 			return e.Long()
 		}
+
 		return e.LongSlice()
 
 	case Rational:
@@ -118,16 +129,148 @@ func (e Entry) Value() (any, error) {
 			return e.Rational()
 		}
 
-		panic("Not implemented")
+		return e.RationalSlice()
+
+	case Undefined:
+		return nil, errors.New("Undefined type")
+
+	case SLong:
+		if e.Count == 1 {
+			return e.SLong()
+		}
+
+		return e.SLongSlice()
+
+	case SRational:
+		if e.Count == 1 {
+			return e.SRational()
+		}
+
+		return e.SRationalSlice()
 
 	default:
-		panic("Not implemented")
+		return nil, fmt.Errorf("Unknown type: %s", e.Type)
+	}
+}
+
+// Int returns the integer value of the entry if possible.
+// If the entry is not an integer like value, an error
+// is returned.
+func (e *Entry) Int() (int, error) {
+	switch e.Type {
+	case Ascii:
+		if e.Count == 1 {
+			return int(e.ValueOffset[0]), nil
+		}
+
+		return 0, errors.New("Not single ascii character")
+
+	case Byte:
+		if e.Count == 1 {
+			return int(e.ValueOffset[0]), nil
+		}
+
+		return 0, errors.New("Not single byte")
+
+	case Short:
+		if e.Count == 1 {
+			return int(e.tiff.endianness.Uint16(e.ValueOffset[:])), nil
+		}
+
+		return 0, errors.New("Not single short")
+
+	case Long:
+		if e.Count == 1 {
+			return int(e.tiff.endianness.Uint32(e.ValueOffset[:])), nil
+		}
+
+		return 0, errors.New("Not single long")
+
+	case SLong:
+		if e.Count == 1 {
+			return int(e.tiff.endianness.Uint32(e.ValueOffset[:])), nil
+		}
+
+		return 0, errors.New("Not single signed long")
+
+	default:
+		return 0, errors.New("Not an integer like value")
+	}
+}
+
+// Float returns the float64 value of the entry if possible.
+// If the entry is not a float like value, an error is returned.
+func (e *Entry) Float() (float64, error) {
+	i, err := e.Int()
+	if err == nil {
+		return float64(i), nil
+	}
+
+	switch e.Type {
+	case Rational:
+		if e.Count == 1 {
+			r, err := e.Rational()
+			if err != nil {
+				return 0, err
+			}
+
+			return r.Float(), nil
+		}
+
+		return 0, errors.New("Not single rational")
+
+	case SRational:
+		if e.Count == 1 {
+			r, err := e.SRational()
+			if err != nil {
+				return 0, err
+			}
+
+			return r.Float(), nil
+		}
+
+		return 0, errors.New("Not single signed rational")
+
+	default:
+		return 0, errors.New("Not a float like value")
 	}
 }
 
 // Offset returns the offset of the entry.
 func (e Entry) Offset() int {
 	return int(e.tiff.endianness.Uint32(e.ValueOffset[:]))
+}
+
+// Byte returns the byte value of the entry. If the entry
+// is not a single byte, an error is returned.
+func (e *Entry) Byte() (byte, error) {
+	if e.Type != Byte {
+		return 0, errors.New("Not byte")
+	}
+
+	if e.Count != 1 {
+		return 0, errors.New("Not single byte")
+	}
+
+	return e.ValueOffset[0], nil
+}
+
+// ByteSlice returns the byte slice value of the entry.
+func (e *Entry) ByteSlice() ([]byte, error) {
+	if e.Type != Byte {
+		return nil, errors.New("Not byte")
+	}
+
+	if e.Count <= 4 {
+		// String is stored in the value offset
+		return []byte(e.ValueOffset[:e.Count]), nil
+	}
+
+	if len(e.tiff.bytes) < e.Offset()+int(e.Count) {
+		return nil, errors.New("Buffer too small")
+	}
+
+	return e.tiff.bytes[e.Offset() : e.Offset()+int(e.Count)], nil
 }
 
 // Ascii returns the ASCII value of the entry.
@@ -301,6 +444,53 @@ func (e *Entry) RationalSlice() ([]UnsignedRational, error) {
 	}
 
 	return ratios, nil
+}
+
+// SLong returns the signed long (32 bit) value of the entry.
+func (e *Entry) SLong() (int32, error) {
+	if e.Type != SLong {
+		return 0, errors.New("not a long")
+	}
+
+	if e.Count != 1 {
+		return 0, errors.New("not a single long")
+	}
+
+	if len(e.tiff.bytes) < e.Offset()+4 {
+		return 0, errors.New("buffer too small")
+	}
+
+	return int32(e.tiff.endianness.Uint32(e.ValueOffset[:])), nil
+}
+
+// SLongSlice returns the signed long slice value of the entry.
+func (e *Entry) SLongSlice() ([]int32, error) {
+	if e.Type != SLong {
+		return nil, errors.New("not a signed long")
+	}
+
+	if e.Count <= 1 {
+		// Long is stored in the value offset
+		longs := make([]int32, e.Count)
+
+		for i := 0; i < int(e.Count); i++ {
+			longs[i] = int32(e.tiff.endianness.Uint32(e.ValueOffset[i*4:]))
+		}
+
+		return longs, nil
+	}
+
+	if len(e.tiff.bytes) < e.Offset()+int(e.Count)*4 {
+		return nil, errors.New("buffer too small")
+	}
+
+	longs := make([]int32, e.Count)
+
+	for i := 0; i < int(e.Count); i++ {
+		longs[i] = int32(e.tiff.endianness.Uint32(e.tiff.bytes[e.Offset()+4*i:]))
+	}
+
+	return longs, nil
 }
 
 // SRational returns the signed rational value of the entry.
