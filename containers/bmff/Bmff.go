@@ -133,6 +133,19 @@ func (b *Bmff) parseBox(data []byte) (length uint64, err error) {
 
 	debugf("parseBox: type:%s length:%d", boxType, length)
 
+	if length+1 > uint64(len(data)) {
+		length = 0
+		err = returnErr(fileformats.ErrImageNotRecognized)
+
+		return
+	}
+
+	if start >= int(length) {
+		err = returnErr(fileformats.ErrImageNotRecognized)
+
+		return
+	}
+
 	switch boxType {
 	case "ftyp":
 		length, err = parseFtyp(data[start:length])
@@ -197,12 +210,24 @@ func (b *Bmff) parseIinf0(data []byte) {
 			return
 		}
 
+		if len(data) < 12+2 {
+			debugf("parseIinf0 pos:%d: Too short", i)
+
+			return
+		}
+
 		item := binary.BigEndian.Uint16(data[12:])
 
 		if item < 1 || item > uint16(len(b.iinfItems)) {
 			debugf("parseIinf0 pos:%d: item:%d Invalid item number", i, item)
 
 			continue
+		}
+
+		if length > uint64(len(data)) {
+			debugf("parseIinf0 pos:%d: infe: length:%d > len(data):%d", i, length, len(data))
+
+			return
 		}
 
 		var infe string
@@ -283,6 +308,12 @@ func (b *Bmff) parseMeta(data []byte) (length uint64, err error) {
 	for len(data) > 12 {
 		length, tag, version, tags := parseFullbox(data)
 
+		if length == 0 || length+12 > uint64(len(data)) {
+			err = returnErr(fileformats.ErrImageNotRecognized)
+
+			break
+		}
+
 		debugf("parseMeta tag:%s length:%d version:%d flags:%x", tag, length, version, tags)
 
 		switch {
@@ -293,10 +324,16 @@ func (b *Bmff) parseMeta(data []byte) (length uint64, err error) {
 			b.parseIloc1(data[12 : 12+length])
 		}
 
+		if uint64(len(data))+1 < length {
+			err = returnErr(fileformats.ErrImageNotRecognized)
+
+			break
+		}
+
 		read += length
 
 		data = data[length:]
 	}
 
-	return read, nil
+	return read, err
 }
