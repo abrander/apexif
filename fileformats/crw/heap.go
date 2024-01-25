@@ -38,11 +38,8 @@ func (h *heap) Bytes(record dataRecord) ([]byte, error) {
 }
 
 func readHeap(data []byte) (*heap, error) {
-	fmt.Printf("readHeap Heap size: %d\n", len(data))
 	offsetTblOffset := binary.LittleEndian.Uint32(data[len(data)-4:])
-	fmt.Printf("readHeap Offset table offset: %d\n", offsetTblOffset)
 	records := binary.LittleEndian.Uint16(data[offsetTblOffset:])
-	fmt.Printf("readHeap Records: %d\n", records)
 
 	h := &heap{
 		bytes:   data,
@@ -56,8 +53,6 @@ func readHeap(data []byte) (*heap, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		fmt.Printf("readHeap Record %d: %s\n", r, record)
 
 		h.records[r] = record
 	}
