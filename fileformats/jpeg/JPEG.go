@@ -47,6 +47,10 @@ func (j *JPEG) Exif() (*exif.Exif, error) {
 		marker := binary.BigEndian.Uint16(j.bytes[offset:])
 		length := binary.BigEndian.Uint16(j.bytes[offset+2:])
 
+		if length == 0 {
+			return nil, exif.ErrNoExifFound
+		}
+
 		if marker == APP1 {
 			if offset+4+int(length) > len(j.bytes) {
 				return nil, exif.ErrNoExifFound
