@@ -12,6 +12,8 @@ type CRW struct {
 	bytes []byte
 }
 
+var _ fileformats.FileType = &CRW{}
+
 func Identify(bytes []byte) (fileformats.FileType, error) {
 	if len(bytes) < 10 {
 		return nil, fileformats.ErrImageNotRecognized
