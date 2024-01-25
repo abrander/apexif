@@ -243,7 +243,7 @@ func (e *Exif) MakeModel() (string, string, error) {
 		return make, "", err
 	}
 
-	if strings.HasPrefix(strings.ToUpper(model), strings.ToUpper(make)) {
+	if strings.HasPrefix(strings.ToUpper(model), strings.ToUpper(make)) && len(model) > len(make) {
 		return make, model[len(make)+1:], nil
 	}
 
