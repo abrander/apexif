@@ -13,7 +13,7 @@ type PNG struct {
 }
 
 const signature string = "\x89PNG\r\n\x1a\n"
-const crcSize uint32 = 4
+const crcSize = 4
 
 var _ fileformats.FileType = &PNG{}
 
@@ -43,6 +43,10 @@ func (p *PNG) Exif() (*exif.Exif, error) {
 			return nil, errors.New("no EXIF data found")
 		}
 
+		if offset+8 > len(p.bytes) {
+			return nil, fileformats.ErrImageNotRecognized
+		}
+
 		length := binary.BigEndian.Uint32(p.bytes[offset:])
 		chunkType := string(p.bytes[offset+4 : offset+8])
 
@@ -53,7 +57,7 @@ func (p *PNG) Exif() (*exif.Exif, error) {
 			return exif.Parse(p.bytes[offset : offset+int(length)])
 
 		default:
-			offset += int(length + crcSize)
+			offset += int(length) + crcSize
 		}
 	}
 }
