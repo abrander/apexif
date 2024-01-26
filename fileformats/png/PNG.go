@@ -2,7 +2,6 @@ package png
 
 import (
 	"encoding/binary"
-	"errors"
 
 	"github.com/abrander/apexif/containers/exif"
 	"github.com/abrander/apexif/fileformats"
@@ -40,11 +39,11 @@ func (p *PNG) Exif() (*exif.Exif, error) {
 
 	for {
 		if offset >= len(p.bytes) {
-			return nil, errors.New("no EXIF data found")
+			return nil, exif.ErrNoExifFound
 		}
 
 		if offset+8 > len(p.bytes) {
-			return nil, fileformats.ErrImageNotRecognized
+			return nil, exif.ErrNoExifFound
 		}
 
 		length := binary.BigEndian.Uint32(p.bytes[offset:])
