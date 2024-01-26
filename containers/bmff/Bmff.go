@@ -35,8 +35,10 @@ func returnErr(err error) error {
 	return err
 }
 
+const boxSize = 8
+
 func parseBox(data []byte) (length uint64, boxType string) {
-	if len(data) < 8 {
+	if len(data) < boxSize {
 		return 0, ""
 	}
 
@@ -46,8 +48,10 @@ func parseBox(data []byte) (length uint64, boxType string) {
 	return
 }
 
+const fullboxSize = 12
+
 func parseFullbox(data []byte) (length uint64, boxType string, version uint8, flags uint32) {
-	if len(data) < 12 {
+	if len(data) < fullboxSize {
 		return
 	}
 
@@ -73,7 +77,7 @@ func Parse(data []byte) (*Bmff, error) {
 
 	b := &Bmff{data, nil}
 
-	for len(data) > 8 {
+	for len(data) > boxSize {
 		length, err := b.parseBox(data[0:])
 		if err != nil {
 			return nil, err
@@ -94,9 +98,11 @@ func Parse(data []byte) (*Bmff, error) {
 }
 
 func (b *Bmff) Iloc(tag string) []byte {
+	const WTF = 10
+
 	for _, item := range b.iinfItems {
 		if item.tag == tag {
-			return b.bytes[item.offset+10 : item.offset+10+item.length]
+			return b.bytes[item.offset+WTF : item.offset+WTF+item.length]
 		}
 	}
 
@@ -104,14 +110,14 @@ func (b *Bmff) Iloc(tag string) []byte {
 }
 
 func (b *Bmff) parseBox(data []byte) (length uint64, err error) {
-	if len(data) < 8 {
+	if len(data) < boxSize {
 		err = returnErr(fileformats.ErrImageNotRecognized)
 
 		return
 	}
 
 	length, boxType := parseBox(data)
-	start := 8
+	start := boxSize
 
 	if len(data) < int(length) {
 		length = 0
@@ -133,7 +139,7 @@ func (b *Bmff) parseBox(data []byte) (length uint64, err error) {
 
 	debugf("parseBox: type:%s length:%d", boxType, length)
 
-	if length+1 > uint64(len(data)) {
+	if length > uint64(len(data)) {
 		length = 0
 		err = returnErr(fileformats.ErrImageNotRecognized)
 
@@ -149,18 +155,18 @@ func (b *Bmff) parseBox(data []byte) (length uint64, err error) {
 	switch boxType {
 	case "ftyp":
 		length, err = parseFtyp(data[start:length])
-		return length + 8, err
+		return length + boxSize, err
 
 	case "meta":
 		length, err = b.parseMeta(data[start:length])
-		return length + 8, err
+		return length + boxSize, err
 	}
 
 	return
 }
 
 func parseFtyp(data []byte) (length uint64, err error) {
-	if len(data) < 8 {
+	if len(data) < boxSize {
 		err = returnErr(fileformats.ErrImageNotRecognized)
 
 		return
@@ -233,7 +239,7 @@ func (b *Bmff) parseIinf0(data []byte) {
 		var infe string
 		switch tag {
 		case "infe":
-			infe = parseInfe(data[8 : 8+length])
+			infe = parseInfe(data[boxSize : boxSize+length])
 			b.iinfItems[i].tag = infe
 		}
 
@@ -305,10 +311,10 @@ func (b *Bmff) parseMeta(data []byte) (length uint64, err error) {
 	read := uint64(4)
 	data = data[4:]
 
-	for len(data) > 12 {
+	for len(data) > fullboxSize {
 		length, tag, version, tags := parseFullbox(data)
 
-		if length == 0 || length+12 > uint64(len(data)) {
+		if length < fullboxSize || length > uint64(len(data)) {
 			err = returnErr(fileformats.ErrImageNotRecognized)
 
 			break
@@ -318,10 +324,10 @@ func (b *Bmff) parseMeta(data []byte) (length uint64, err error) {
 
 		switch {
 		case tag == "iinf" && version == 0:
-			b.parseIinf0(data[12 : 12+length])
+			b.parseIinf0(data[fullboxSize:length])
 
 		case tag == "iloc" && version == 1:
-			b.parseIloc1(data[12 : 12+length])
+			b.parseIloc1(data[fullboxSize:length])
 		}
 
 		if uint64(len(data))+1 < length {
