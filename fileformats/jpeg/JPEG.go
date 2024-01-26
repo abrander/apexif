@@ -58,7 +58,7 @@ func (j *JPEG) Exif() (*exif.Exif, error) {
 
 			buf := j.bytes[offset+4:]
 
-			if string(buf[0:6]) == "Exif\000\000" {
+			if len(buf) >= 6 && string(buf[0:6]) == "Exif\000\000" {
 				return exif.Parse(buf[6:])
 			}
 		}
